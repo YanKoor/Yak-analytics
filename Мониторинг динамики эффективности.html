@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Музыкальная Аналитика</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --color-primary: #2196F3;
+            --color-primary-hover: #1976D2;
+            --color-success: #4CAF50;
+            --color-error: #f44336;
+            --color-warning: #ff9800;
+            --color-bg: #f5f5f5;
+            --color-surface: #ffffff;
+            --color-text: #333333;
+            --color-text-secondary: #666666;
+            --color-border: #e0e0e0;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --radius: 8px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+
+        header {
+            background: var(--color-surface);
+            box-shadow: var(--shadow);
+            margin-bottom: var(--spacing-lg);
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text);
+        }
+
+        .controls {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        button:hover {
+            background-color: var(--color-primary-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background-color: #757575;
+        }
+
+        button.secondary:hover {
+            background-color: #616161;
+        }
+
+        button.danger {
+            background-color: var(--color-error);
+        }
+
+        button.danger:hover {
+            background-color: #d32f2f;
+        }
+
+        .status-badge {
+            background-color: var(--color-success);
+            color: white;
+            padding: 6px 12px;
+            border-radius: var(--radius);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            background: var(--color-surface);
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow);
+            position: relative;
+            height: 400px;
+        }
+
+        canvas {
+            max-height: 100%;
+        }
+
+        .metrics-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .metric-card {
+            background: var(--color-surface);
+            padding: var(--spacing-md);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        .table-container {
+            background: var(--color-surface);
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: var(--color-bg);
+            padding: var(--spacing-md);
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-border);
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        tr:hover {
+            background-color: #fafafa;
+        }
+
+        .edit-delete-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        .icon-btn.delete {
+            background-color: var(--color-error);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--color-surface);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 500px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            color: var(--color-text);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--color-text);
+        }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            background-color: var(--color-surface);
+            color: var(--color-text);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-lg) * 2;
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .metric-filter {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .metric-btn {
+            padding: 8px 16px;
+            font-size: 13px;
+            background-color: var(--color-bg);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+
+        .metric-btn.active {
+            background-color: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .success-msg {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+            padding: var(--spacing-md);
+            border-radius: var(--radius);
+            margin-bottom: var(--spacing-md);
+            display: none;
+        }
+
+        .success-msg.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-md);
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .metrics-summary {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            td, th {
+                padding: 8px;
+            }
+
+            .modal-content {
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 Музыкальная Аналитика</h1>
+            <p style="color: var(--color-text-secondary); margin: 0;">Отслеживание эффективности продвижения контента</p>
+        </header>
+
+        <div class="success-msg" id="successMsg"></div>
+
+        <div class="controls">
+            <button onclick="openAddModal()">+ Добавить запись</button>
+            <button class="secondary" onclick="openEditModal()">🔓 Редактирование</button>
+            <button class="secondary" onclick="exportToCSV()">📥 Экспорт CSV</button>
+            <span id="editStatus"></span>
+        </div>
+
+        <div class="metrics-summary" id="metricsSummary"></div>
+
+        <div class="chart-container">
+            <div class="metric-filter">
+                <button class="metric-btn active" onclick="switchMetric('averageEfficiency')">Средняя эффективность</button>
+                <button class="metric-btn" onclick="switchMetric('costPerListener')">Стоимость за слушателя</button>
+                <button class="metric-btn" onclick="switchMetric('costPerCardVisit')">Стоимость за посещение</button>
+                <button class="metric-btn" onclick="switchMetric('costPerTrack')">Стоимость за трек</button>
+                <button class="metric-btn" onclick="switchMetric('costPerRetargeting')">Стоимость за ретаргетинг</button>
+            </div>
+            <canvas id="analyticsChart"></canvas>
+        </div>
+
+        <div class="table-container">
+            <h2 style="margin-bottom: var(--spacing-md); font-size: 18px;">Таблица данных</h2>
+            <div id="tableContent"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления записи -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Добавить запись</span>
+                <button class="close-btn" onclick="closeAddModal()">&times;</button>
+            </div>
+            <form onsubmit="addRecord(event)">
+                <div class="form-group">
+                    <label for="recordMonth">Месяц и год:</label>
+                    <input type="month" id="recordMonth" required>
+                </div>
+                <div class="form-group">
+                    <label for="recordSpent">Потрачено (₽):</label>
+                    <input type="number" id="recordSpent" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="recordListeners">Пришло слушателей:</label>
+                    <input type="number" id="recordListeners" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="recordTracks">Добавили трек:</label>
+                    <input type="number" id="recordTracks" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="recordCardVisits">Посетили карточку:</label>
+                    <input type="number" id="recordCardVisits" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="recordRetargeting">Единиц ретаргетинга:</label>
+                    <input type="number" id="recordRetargeting" min="0" step="1" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="secondary" onclick="closeAddModal()">Отмена</button>
+                    <button type="submit">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования (пароль) -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Режим редактирования</span>
+                <button class="close-btn" onclick="closePasswordModal()">&times;</button>
+            </div>
+            <form onsubmit="verifyPassword(event)">
+                <div class="form-group">
+                    <label for="passwordInput">Введите пароль:</label>
+                    <input type="password" id="passwordInput" placeholder="••••" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="secondary" onclick="closePasswordModal()">Отмена</button>
+                    <button type="submit">Проверить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования записи -->
+    <div id="editRecordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Редактировать запись</span>
+                <button class="close-btn" onclick="closeEditRecordModal()">&times;</button>
+            </div>
+            <form onsubmit="updateRecord(event)">
+                <div class="form-group">
+                    <label for="editMonth">Месяц и год:</label>
+                    <input type="month" id="editMonth" required>
+                </div>
+                <div class="form-group">
+                    <label for="editSpent">Потрачено (₽):</label>
+                    <input type="number" id="editSpent" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="editListeners">Пришло слушателей:</label>
+                    <input type="number" id="editListeners" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="editTracks">Добавили трек:</label>
+                    <input type="number" id="editTracks" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="editCardVisits">Посетили карточку:</label>
+                    <input type="number" id="editCardVisits" min="0" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="editRetargeting">Единиц ретаргетинга:</label>
+                    <input type="number" id="editRetargeting" min="0" step="1" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="secondary" onclick="closeEditRecordModal()">Отмена</button>
+                    <button type="submit">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const PASSWORD = "2111";
+        const STORAGE_KEY = "musicAnalyticsData";
+        let editMode = false;
+        let currentEditingId = null;
+        let currentMetric = "averageEfficiency";
+        let chart = null;
+
+        // Инициализация
+        document.addEventListener("DOMContentLoaded", () => {
+            loadData();
+            renderMetrics();
+            renderTable();
+            renderChart();
+            setTodayAsDefaultMonth();
+        });
+
+        function setTodayAsDefaultMonth() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, "0");
+            document.getElementById("recordMonth").value = `${year}-${month}`;
+            document.getElementById("editMonth").value = `${year}-${month}`;
+        }
+
+        function loadData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveData(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function calculateMetrics(record) {
+            const costPerListener = record.spent / record.listeners || 0;
+            const costPerCardVisit = record.spent / record.cardVisits || 0;
+            const costPerTrack = record.spent / record.tracks || 0;
+            const costPerRetargeting = record.spent / record.retargeting || 0;
+            const averageEfficiency = (costPerListener + costPerCardVisit + costPerTrack + costPerRetargeting) / 4;
+
+            return {
+                costPerListener: Math.round(costPerListener * 100) / 100,
+                costPerCardVisit: Math.round(costPerCardVisit * 100) / 100,
+                costPerTrack: Math.round(costPerTrack * 100) / 100,
+                costPerRetargeting: Math.round(costPerRetargeting * 100) / 100,
+                averageEfficiency: Math.round(averageEfficiency * 100) / 100
+            };
+        }
+
+        function openAddModal() {
+            if (editMode) {
+                alert("Выйдите из режима редактирования сначала");
+                return;
+            }
+            document.getElementById("addModal").classList.add("show");
+        }
+
+        function closeAddModal() {
+            document.getElementById("addModal").classList.remove("show");
+            document.getElementById("addModal").offsetHeight;
+        }
+
+        function addRecord(event) {
+            event.preventDefault();
+            const data = loadData();
+
+            const month = document.getElementById("recordMonth").value;
+            if (data.some(r => r.month === month)) {
+                alert("Запись за этот месяц уже существует!");
+                return;
+            }
+
+            const spent = parseInt(document.getElementById("recordSpent").value);
+            const listeners = parseInt(document.getElementById("recordListeners").value);
+            const tracks = parseInt(document.getElementById("recordTracks").value);
+            const cardVisits = parseInt(document.getElementById("recordCardVisits").value);
+            const retargeting = parseInt(document.getElementById("recordRetargeting").value);
+
+            if (!spent || !listeners || !tracks || !cardVisits || !retargeting) {
+                alert("Все поля должны быть заполнены и больше нуля");
+                return;
+            }
+
+            const record = {
+                id: Date.now().toString(),
+                month,
+                spent,
+                listeners,
+                tracks,
+                cardVisits,
+                retargeting,
+                metrics: calculateMetrics({ spent, listeners, tracks, cardVisits, retargeting }),
+                createdAt: new Date().toISOString()
+            };
+
+            data.push(record);
+            data.sort((a, b) => new Date(a.month) - new Date(b.month));
+            saveData(data);
+
+            showSuccess("Запись добавлена успешно!");
+            closeAddModal();
+            renderMetrics();
+            renderTable();
+            renderChart();
+            document.getElementById("addModal").querySelector("form").reset();
+            setTodayAsDefaultMonth();
+        }
+
+        function openEditModal() {
+            document.getElementById("passwordModal").classList.add("show");
+        }
+
+        function closePasswordModal() {
+            document.getElementById("passwordModal").classList.remove("show");
+            document.getElementById("passwordInput").value = "";
+        }
+
+        function verifyPassword(event) {
+            event.preventDefault();
+            const password = document.getElementById("passwordInput").value;
+
+            if (password === PASSWORD) {
+                editMode = true;
+                document.getElementById("editStatus").innerHTML = '<span class="status-badge">✓ Режим редактирования</span>';
+                closePasswordModal();
+                renderTable();
+                showSuccess("Режим редактирования активирован!");
+            } else {
+                alert("Неверный пароль!");
+                document.getElementById("passwordInput").value = "";
+            }
+        }
+
+        function openEditRecordModal(id) {
+            currentEditingId = id;
+            const data = loadData();
+            const record = data.find(r => r.id === id);
+
+            if (record) {
+                document.getElementById("editMonth").value = record.month;
+                document.getElementById("editSpent").value = record.spent;
+                document.getElementById("editListeners").value = record.listeners;
+                document.getElementById("editTracks").value = record.tracks;
+                document.getElementById("editCardVisits").value = record.cardVisits;
+                document.getElementById("editRetargeting").value = record.retargeting;
+                document.getElementById("editRecordModal").classList.add("show");
+            }
+        }
+
+        function closeEditRecordModal() {
+            document.getElementById("editRecordModal").classList.remove("show");
+            currentEditingId = null;
+        }
+
+        function updateRecord(event) {
+            event.preventDefault();
+            const data = loadData();
+            const index = data.findIndex(r => r.id === currentEditingId);
+
+            if (index !== -1) {
+                const month = document.getElementById("editMonth").value;
+                const monthExists = data.some((r, i) => r.month === month && i !== index);
+                if (monthExists) {
+                    alert("Запись за этот месяц уже существует!");
+                    return;
+                }
+
+                data[index] = {
+                    ...data[index],
+                    month,
+                    spent: parseInt(document.getElementById("editSpent").value),
+                    listeners: parseInt(document.getElementById("editListeners").value),
+                    tracks: parseInt(document.getElementById("editTracks").value),
+                    cardVisits: parseInt(document.getElementById("editCardVisits").value),
+                    retargeting: parseInt(document.getElementById("editRetargeting").value)
+                };
+
+                data[index].metrics = calculateMetrics(data[index]);
+                data.sort((a, b) => new Date(a.month) - new Date(b.month));
+                saveData(data);
+
+                showSuccess("Запись обновлена!");
+                closeEditRecordModal();
+                renderMetrics();
+                renderTable();
+                renderChart();
+            }
+        }
+
+        function deleteRecord(id) {
+            if (confirm("Вы уверены, что хотите удалить эту запись?")) {
+                const data = loadData();
+                const filtered = data.filter(r => r.id !== id);
+                saveData(filtered);
+                showSuccess("Запись удалена!");
+                renderMetrics();
+                renderTable();
+                renderChart();
+            }
+        }
+
+        function exitEditMode() {
+            editMode = false;
+            document.getElementById("editStatus").innerHTML = "";
+            renderTable();
+            showSuccess("Режим редактирования завершен!");
+        }
+
+        function renderMetrics() {
+            const data = loadData();
+            const container = document.getElementById("metricsSummary");
+
+            if (data.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Добавьте первую запись, чтобы видеть метрики</p></div>';
+                return;
+            }
+
+            const totals = {
+                spent: data.reduce((sum, r) => sum + r.spent, 0),
+                listeners: data.reduce((sum, r) => sum + r.listeners, 0),
+                tracks: data.reduce((sum, r) => sum + r.tracks, 0),
+                cardVisits: data.reduce((sum, r) => sum + r.cardVisits, 0),
+                retargeting: data.reduce((sum, r) => sum + r.retargeting, 0)
+            };
+
+            const totalMetrics = {
+                costPerListener: Math.round(totals.spent / totals.listeners * 100) / 100,
+                costPerCardVisit: Math.round(totals.spent / totals.cardVisits * 100) / 100,
+                costPerTrack: Math.round(totals.spent / totals.tracks * 100) / 100,
+                costPerRetargeting: Math.round(totals.spent / totals.retargeting * 100) / 100
+            };
+
+            container.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-label">Всего потрачено</div>
+                    <div class="metric-value">${totals.spent.toLocaleString('ru-RU')} ₽</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Слушателей</div>
+                    <div class="metric-value">${totals.listeners.toLocaleString('ru-RU')}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Стоимость за слушателя</div>
+                    <div class="metric-value">${totalMetrics.costPerListener.toLocaleString('ru-RU')} ₽</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Стоимость за посещение</div>
+                    <div class="metric-value">${totalMetrics.costPerCardVisit.toLocaleString('ru-RU')} ₽</div>
+                </div>
+            `;
+        }
+
+        function renderTable() {
+            const data = loadData();
+            const container = document.getElementById("tableContent");
+
+            if (data.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Данных нет. Добавьте первую запись</p></div>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Месяц</th>
+                            <th>Потрачено (₽)</th>
+                            <th>Слушатели</th>
+                            <th>Треки</th>
+                            <th>Посещения</th>
+                            <th>Ретаргетинг</th>
+                            <th>Средняя эфф. (₽)</th>
+                            ${editMode ? '<th>Действия</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach(record => {
+                const monthStr = new Date(record.month + "-01").toLocaleDateString('ru-RU', { year: 'numeric', month: 'long' });
+                html += `
+                    <tr>
+                        <td>${monthStr}</td>
+                        <td>${record.spent.toLocaleString('ru-RU')}</td>
+                        <td>${record.listeners.toLocaleString('ru-RU')}</td>
+                        <td>${record.tracks.toLocaleString('ru-RU')}</td>
+                        <td>${record.cardVisits.toLocaleString('ru-RU')}</td>
+                        <td>${record.retargeting.toLocaleString('ru-RU')}</td>
+                        <td>${record.metrics.averageEfficiency.toLocaleString('ru-RU')}</td>
+                        ${editMode ? `<td>
+                            <div class="edit-delete-btns">
+                                <button class="icon-btn" onclick="openEditRecordModal('${record.id}')">✏️ Редактировать</button>
+                                <button class="icon-btn delete" onclick="deleteRecord('${record.id}')">🗑️ Удалить</button>
+                            </div>
+                        </td>` : ''}
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            if (editMode) {
+                html += '<div style="margin-top: var(--spacing-md);"><button class="secondary" onclick="exitEditMode()">Выход из режима редактирования</button></div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderChart() {
+            const data = loadData();
+            const ctx = document.getElementById("analyticsChart").getContext("2d");
+
+            if (data.length === 0) {
+                if (chart) chart.destroy();
+                ctx.fillStyle = "#999";
+                ctx.font = "14px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("Добавьте данные, чтобы увидеть график", 300, 200);
+                return;
+            }
+
+            const labels = data.map(r => {
+                const date = new Date(r.month + "-01");
+                return date.toLocaleDateString('ru-RU', { year: '2-digit', month: 'short' });
+            });
+
+            const metricLabels = {
+                averageEfficiency: "Средняя эффективность (₽)",
+                costPerListener: "Стоимость за слушателя (₽)",
+                costPerCardVisit: "Стоимость за посещение (₽)",
+                costPerTrack: "Стоимость за трек (₽)",
+                costPerRetargeting: "Стоимость за ретаргетинг (₽)"
+            };
+
+            const values = data.map(r => r.metrics[currentMetric]);
+
+            const chartConfig = {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: metricLabels[currentMetric],
+                        data: values,
+                        borderColor: "#2196F3",
+                        backgroundColor: "rgba(33, 150, 243, 0.1)",
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: "#2196F3",
+                        pointBorderColor: "#fff",
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { usePointStyle: true, padding: 20 }
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(0,0,0,0.8)",
+                            padding: 12,
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toLocaleString('ru-RU') + " ₽";
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('ru-RU');
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, chartConfig);
+        }
+
+        function switchMetric(metric) {
+            currentMetric = metric;
+            document.querySelectorAll(".metric-btn").forEach(btn => btn.classList.remove("active"));
+            event.target.classList.add("active");
+            renderChart();
+        }
+
+        function exportToCSV() {
+            const data = loadData();
+            if (data.length === 0) {
+                alert("Нет данных для экспорта!");
+                return;
+            }
+
+            let csv = "Месяц,Потрачено,Слушатели,Треки,Посещения,Ретаргетинг,Эффективность (₽)\n";
+            data.forEach(record => {
+                const monthStr = new Date(record.month + "-01").toLocaleDateString('ru-RU');
+                csv += `${monthStr},${record.spent},${record.listeners},${record.tracks},${record.cardVisits},${record.retargeting},${record.metrics.averageEfficiency}\n`;
+            });
+
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "music-analytics.csv");
+            link.style.visibility = "hidden";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function showSuccess(message) {
+            const msg = document.getElementById("successMsg");
+            msg.textContent = message;
+            msg.classList.add("show");
+            setTimeout(() => msg.classList.remove("show"), 3000);
+        }
+
+        // Закрытие модалей при клике на фон
+        document.querySelectorAll(".modal").forEach(modal => {
+            modal.addEventListener("click", (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove("show");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
